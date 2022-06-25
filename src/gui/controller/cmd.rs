@@ -22,6 +22,7 @@ pub const PLAY_NEXT: Selector = Selector::new("app.play-next");
 pub const PLAY_STOP: Selector = Selector::new("app.play-stop");
 pub const PLAY_SEEK: Selector<u64> = Selector::new("app.play-seek");
 pub const PLAY_VOLUME: Selector<f64> = Selector::new("app.play-volume");
+pub const PLAY_RATE: Selector<f64> = Selector::new("app.play-rate");
 
 //Video Frame
 

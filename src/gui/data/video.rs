@@ -82,6 +82,15 @@ pub enum VideoPlayerState {
 	Paused,
 	Stopped,
 }
+#[derive(Data, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
+pub enum VideoRate {
+	D2,
+	D5,
+	M,
+	I2,
+	I5,
+	I20,
+}
 #[derive(Clone, Debug, Data, Lens)]
 pub struct VideoViewState {
 	pub state: VideoPlayerState,
@@ -91,6 +100,8 @@ pub struct VideoViewState {
 	pub percentage: f64,
 	pub pre_percentage: f64,
 	pub seeking_enabled: bool,
+	pub rate: f64,
+	pub rate_set: bool,
 }
 
 /// Video player which handles multimedia playback.

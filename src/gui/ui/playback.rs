@@ -1,15 +1,19 @@
 use std::time::Duration;
 
 use druid::{
-	widget::{Controller, Either, Flex, KnobStyle, Label, SizedBox, Slider, ViewSwitcher},
+	widget::{
+		Axis, Button, Controller, Either, Flex, KnobStyle, Label, RangeSlider, SizedBox, Slider,
+		Stepper, ViewSwitcher,
+	},
 	Color, Cursor, Data, Env, Event, EventCtx, KeyOrValue, MouseButton, PaintCtx, Point, Rect,
 	RenderContext, Size, Widget, WidgetExt,
 };
+use druid_widget_nursery::DropdownSelect;
 
 use crate::gui::{
 	controller::cmd,
 	data::{
-		video::{VideoPlayer, VideoPlayerState, VideoViewState},
+		video::{VideoPlayer, VideoPlayerState, VideoRate, VideoViewState},
 		AppState,
 	},
 	widgets::{
@@ -22,12 +26,29 @@ use crate::gui::{
 pub fn panel_widget() -> impl Widget<AppState> {
 	// let seek_bar = Either::new(|playback, _| playback.current_item.is_some(),
 	// SeekBar::new(), Empty);
+	let rate = Either::new(
+		|video: &VideoViewState, _| video.rate_set,
+		Slider::new()
+			.with_range(0.0, 2.0)
+			.track_color(KeyOrValue::Concrete(Color::RED))
+			.knob_style(KnobStyle::Wedge)
+			.axis(Axis::Horizontal)
+			.with_step(0.1)
+			.annotated(0.5, 0.1)
+			.fix_width(480.0)
+			.lens(VideoViewState::rate)
+			.controller(RateSliderController {})
+			.boxed(),
+		Empty,
+	)
+	.center();
 
-	let controls = Either::new(
+	let controls = Flex::row().with_child(Either::new(
 		|video: &VideoViewState, _| !video.current_item.is_empty(),
 		player_widget(),
 		Empty,
-	);
+	));
+
 	Flex::column()
 		.with_child(Either::new(
 			|state: &VideoViewState, _| !state.current_item.is_empty(),
@@ -43,6 +64,8 @@ pub fn panel_widget() -> impl Widget<AppState> {
 		))
 		.with_default_spacer()
 		.with_child(controls)
+		.with_default_spacer()
+		.with_child(rate)
 		.lens(AppState::video)
 	// .controller(PlaybackController::new())
 }
@@ -56,6 +79,13 @@ fn player_widget() -> impl Widget<VideoViewState> {
 			durations_widget(),
 			Empty,
 		))
+		.with_default_spacer()
+		.with_child(
+			Button::dynamic(|data: &VideoViewState, _: &Env| format!("{:.1}x", data.rate))
+				.on_click(|_ctx, state: &mut VideoViewState, _env| {
+					state.rate_set = !state.rate_set
+				}),
+		)
 		.padding(theme::grid(2.0))
 }
 
@@ -257,6 +287,43 @@ impl<W: Widget<VideoViewState>> Controller<VideoViewState, W> for SliderControll
 					}
 					data.seeking_enabled = true;
 					ctx.set_active(false);
+				}
+			}
+			_ => {}
+		}
+		child.event(ctx, event, data, env)
+	}
+}
+
+pub struct RateSliderController {}
+
+impl<W: Widget<VideoViewState>> Controller<VideoViewState, W> for RateSliderController {
+	fn event(
+		&mut self,
+		child: &mut W,
+		ctx: &mut EventCtx,
+		event: &Event,
+		data: &mut VideoViewState,
+		env: &Env,
+	) {
+		match event {
+			Event::MouseMove(mouse) => {
+				ctx.set_cursor(&Cursor::Pointer);
+				// if ctx.is_active() {
+				// 	let rate = data.rate;
+				// 	ctx.submit_command(cmd::PLAY_RATE.with(rate));
+				// }
+			}
+			Event::MouseDown(mouse) => {
+				if mouse.button == MouseButton::Left {
+					ctx.set_active(true);
+				}
+			}
+			Event::MouseUp(mouse) => {
+				if ctx.is_active() && mouse.button == MouseButton::Left {
+					ctx.set_active(false);
+					let rate = data.rate;
+					ctx.submit_command(cmd::PLAY_RATE.with(rate));
 				}
 			}
 			_ => {}

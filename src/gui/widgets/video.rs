@@ -9,6 +9,7 @@ use druid::{
 };
 use gst::prelude::*;
 use gstreamer as gst;
+use gstreamer::{event::Seek, Element, SeekFlags, SeekType};
 use gstreamer_app as gst_app;
 use num_traits::ToPrimitive;
 
@@ -57,7 +58,7 @@ impl Widget<VideoViewState> for VideoView {
 						data.percentage = percentage;
 						data.pre_percentage = percentage;
 					}
-					if data.position == data.duration{
+					if data.position == data.duration {
 						ctx.submit_command(cmd::PLAY_PAUSE)
 					}
 				}
@@ -114,6 +115,13 @@ impl Widget<VideoViewState> for VideoView {
 					}
 					data.position = *position;
 				}
+			}
+			if let Some(rate) = command.get(cmd::PLAY_RATE) {
+				let rate = if *rate == 0.0 { rate + 0.000000001 } else { *rate };
+				if let Some(ref player) = self.player {
+					send_seek_event(&player.pipeline, rate);
+				}
+				// ctx.request_paint();
 			}
 		}
 
@@ -506,4 +514,46 @@ impl VideoPlayer {
 		self.seek(0)?;
 		Ok(())
 	}*/
+}
+fn send_seek_event(pipeline: &Element, rate: f64) -> bool {
+	// Obtain the current position, needed for the seek event
+	let position = match pipeline.query_position() {
+		Some(pos) => pos,
+		None => {
+			eprintln!("Unable to retrieve current position...\r");
+			return false;
+		}
+	};
+
+	// Create the seek event
+	let seek_event = if rate > 0. {
+		Seek::new(
+			rate,
+			SeekFlags::FLUSH | SeekFlags::ACCURATE,
+			SeekType::Set,
+			position,
+			SeekType::End,
+			gst::ClockTime::ZERO,
+		)
+	} else {
+		Seek::new(
+			rate,
+			SeekFlags::FLUSH | SeekFlags::ACCURATE,
+			SeekType::Set,
+			position,
+			SeekType::Set,
+			position,
+		)
+	};
+
+	// If we have not done so, obtain the sink through which we will send the seek
+	// events
+	if let Ok(Some(video_sink)) = pipeline.try_property::<Option<Element>>("video-sink") {
+		println!("Current rate: {}\r", rate);
+		// Send the event
+		video_sink.send_event(seek_event)
+	} else {
+		eprintln!("Failed to update rate...\r");
+		false
+	}
 }

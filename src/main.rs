@@ -3,7 +3,7 @@ use druid::{AppLauncher, LocalizedString, WindowDesc};
 use druid_video::{
 	gui,
 	gui::data::{
-		video::{VideoPlayerState, VideoViewState},
+		video::{VideoPlayerState, VideoRate, VideoViewState},
 		Theme,
 	},
 };
@@ -23,6 +23,8 @@ fn main() -> Result<()> {
 			percentage: 0.0,
 			pre_percentage: 0.0,
 			seeking_enabled: true,
+			rate: 1.0,
+			rate_set: false,
 		},
 		theme: Theme::Light,
 	};
